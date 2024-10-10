@@ -8,9 +8,11 @@ contract TournamentScore {
     }
 
     Player[] public players;
+    string public winner;  // Nouvelle variable pour stocker le gagnant du tournoi
 
-    // Ajouter un événement pour suivre les ajouts de joueurs
+    // Ajouter un événement pour suivre les ajouts de joueurs et du gagnant
     event PlayerAdded(string name, uint score);
+    event TournamentWinner(string winner);  // Nouvel événement pour le gagnant
 
     function addPlayer(string memory _name) public {
         require(bytes(_name).length > 0, "Le nom ne peut pas etre vide");
@@ -32,26 +34,39 @@ contract TournamentScore {
         return players;
     }
 
-function finalizeTournament(string[] memory playerNames, uint[] memory scores) public {
-    require(playerNames.length == scores.length, "Les tableaux doivent avoir la meme longueur");
-    for (uint i = 0; i < playerNames.length; i++) {
-        require(bytes(playerNames[i]).length > 0, "Le nom ne peut pas etre vide");
+    // Fonction pour finaliser le tournoi et mettre à jour les scores des joueurs
+    function finalizeTournament(string[] memory playerNames, uint[] memory scores) public {
+        require(playerNames.length == scores.length, "Les tableaux doivent avoir la meme longueur");
+        for (uint i = 0; i < playerNames.length; i++) {
+            require(bytes(playerNames[i]).length > 0, "Le nom ne peut pas etre vide");
 
-        // Rechercher le joueur par son nom et mettre à jour son score cumulatif
-        bool found = false;
-        for (uint j = 0; j < players.length; j++) {
-            if (keccak256(bytes(players[j].name)) == keccak256(bytes(playerNames[i]))) {
-                players[j].score += scores[i];  // Ajouter le nouveau score à l'ancien
-                found = true;
-                break;
+            // Rechercher le joueur par son nom et mettre à jour son score cumulatif
+            bool found = false;
+            for (uint j = 0; j < players.length; j++) {
+                if (keccak256(bytes(players[j].name)) == keccak256(bytes(playerNames[i]))) {
+                    players[j].score += scores[i];  // Ajouter le nouveau score à l'ancien
+                    found = true;
+                    break;
+                }
+            }
+
+            // Si le joueur n'est pas trouvé, l'ajouter
+            if (!found) {
+                players.push(Player(playerNames[i], scores[i]));
+                emit PlayerAdded(playerNames[i], scores[i]);
             }
         }
-
-        // Si le joueur n'est pas trouvé, l'ajouter
-        if (!found) {
-            players.push(Player(playerNames[i], scores[i]));
-            emit PlayerAdded(playerNames[i], scores[i]);
-        }
     }
-}
+
+    // Nouvelle fonction pour enregistrer le gagnant du tournoi
+    function enregistrerGagnant(string memory _winner) public {
+        require(bytes(_winner).length > 0, "Le nom du gagnant ne peut pas etre vide");
+        winner = _winner;  // Stocker le nom du gagnant
+        emit TournamentWinner(_winner);  // Emettre un événement pour le gagnant
+    }
+
+    // Récupérer le gagnant du tournoi
+    function getWinner() public view returns (string memory) {
+        return winner;
+    }
 }

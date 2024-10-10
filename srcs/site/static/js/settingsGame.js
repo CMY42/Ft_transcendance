@@ -160,7 +160,7 @@ function getMaxPlayersForMode(mode) {
 }
 
 updateOptions();
-
+//MODIF POUR LA BLOCKCHAIN
 document.getElementById('startGame').addEventListener('click', () => {
     const mode = document.getElementById('mode').value;
     const playerFields = document.getElementsByClassName('player-control');
@@ -220,7 +220,7 @@ document.getElementById('startGame').addEventListener('click', () => {
         window.location.href = 'game.html';
     }
 });
-
+//////////////Jusqu'ici
 function resetToDefault() {
     document.getElementById('maxScore').value = 10;
     document.getElementById('maxScoreValue').textContent = 10;

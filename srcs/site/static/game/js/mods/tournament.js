@@ -4,10 +4,7 @@ import { Ball } from '../scenes/ball.js';
 import { setupControls } from '../scenes/controls.js';
 import { Score } from '../scenes/score.js';
 import { waitForKeyPress } from '../scenes/assets.js';
-import { map1 } from '../scenes/maps/VS.js';
-import { map2 } from '../scenes/maps/VS.js';
-import { map3 } from '../scenes/maps/VS.js';
-import { map4 } from '../scenes/maps/VS.js';
+import { map1, map2, map3, map4 } from '../scenes/maps/VS.js';
 
 // Déclaration de la variable pour le contrat
 let tournamentContract;
@@ -85,46 +82,29 @@ async function getCompte() {
     return comptes[0];
 }
 
-// Fonction pour enregistrer les scores sur la blockchain
-async function enregistrerScoresFinTournoi(joueurs, scores) {
+// Fonction pour enregistrer le gagnant sur la blockchain
+async function enregistrerGagnantTournoi(gagnant) {
     try {
         const compte = await getCompte();
-        const scoresArray = Array.isArray(scores) ? scores : Object.values(scores);
-
-        await tournamentContract.methods.finalizeTournament(joueurs, scoresArray)
+        await tournamentContract.methods.enregistrerGagnant(gagnant)
             .send({ from: compte, gas: 500000 });
-
-        console.log('Scores enregistrés avec succès');
+        console.log('Gagnant du tournoi enregistré avec succès');
     } catch (error) {
-        console.error('Erreur lors de l\'enregistrement des scores', error);
+        console.error('Erreur lors de l\'enregistrement du gagnant', error);
     }
 }
 
-// Fonction corrigée pour afficher tous les joueurs et leurs scores
-async function afficherTousLesScores() {
-    try {
-        // Récupérer le nombre total de joueurs
-        const totalPlayers = await tournamentContract.methods.getTotalPlayers().call();
-        console.log(`Nombre total de joueurs avec un score : ${totalPlayers}`);
+// Fonction pour terminer le tournoi et appeler drawTournamentEnd
+function terminerTournoi(wins) {
+    const gagnant = Object.keys(wins).reduce((a, b) => (wins[a] > wins[b] ? a : b));
+    console.log(`Le gagnant est : ${gagnant}`);
 
-        // Boucler sur chaque joueur et récupérer son nom et son score
-        for (let i = 0; i < totalPlayers; i++) {
-            const result = await tournamentContract.methods.getPlayerScore(i).call();
-            console.log('Résultat brut de getPlayerScore:', result);
+    // Assurez-vous que le contexte "this" est correctement défini
+    // Appel à drawTournamentEnd pour afficher le gagnant et le tableau des scores
+    this.score.drawTournamentEnd(gagnant);
 
-            // Vérifiez si le résultat est un objet avec des clés nommées
-            const name = result.name || result[0]; // Vérifier si c'est un objet ou un tableau
-            const score = result.score || result[1]; // Vérifier si c'est un objet ou un tableau
-
-            if (name && score !== undefined) {
-                console.log(`Joueur ${i + 1}: ${name}, Score: ${score}`);
-            } else {
-                console.error(`Erreur de format: getPlayerScore a retourné un résultat inattendu pour l'index ${i}`, result);
-            }
-        }
-    } catch (error) {
-        console.error('Erreur lors de la récupération des scores:', error);
-    }
+    // Appel pour enregistrer le gagnant sur la blockchain
+    enregistrerGagnantTournoi(gagnant);
 }
 
 // Fonction principale pour initialiser et lancer le jeu
@@ -133,9 +113,6 @@ async function main() {
         await initWeb3();
         const compte = await getCompte();
         console.log('Selected Account:', compte);
-
-        // Exemple d'appel pour afficher tous les scores enregistrés
-        await afficherTousLesScores();
     } catch (error) {
         console.error('Erreur lors de l\'exécution de main:', error);
     }
@@ -152,10 +129,9 @@ async function main() {
     }
 })();
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////
 
 export class Tournament {
-
     constructor(canvas, playerNames, key, ctx, font, maxScore, paddleSpeed, paddleSize, bounceMode, ballSpeed, ballAcceleration, numBalls, map) {
         this.gameArea = new GameArea(800, 600, canvas);
         this.playerNames = playerNames;
@@ -165,7 +141,6 @@ export class Tournament {
         this.isGameOver = false;
         this.balls = [];
         this.map = map;
-        this.bricks = [];
         this.bricks = [];
         this.bricksX = 60;
         this.bricksY = 60;
@@ -188,16 +163,11 @@ export class Tournament {
             right: 'pass'
         };
 
-        if (map == 1)
-            this.bricks = [];
-        else if (map == 2)
-            this.bricks = map1(this.gameArea, this.bricksX, this.bricksY);
-        else if (map == 3)
-            this.bricks = map2(this.gameArea, this.bricksX, this.bricksY);
-        else if (map == 4)
-            this.bricks = map3(this.gameArea, this.bricksX, this.bricksY);
-        else if (map == 5)
-            this.bricks = map4(this.gameArea, this.bricksX, this.bricksY);
+        if (map == 1) this.bricks = [];
+        else if (map == 2) this.bricks = map1(this.gameArea, this.bricksX, this.bricksY);
+        else if (map == 3) this.bricks = map2(this.gameArea, this.bricksX, this.bricksY);
+        else if (map == 4) this.bricks = map3(this.gameArea, this.bricksX, this.bricksY);
+        else if (map == 5) this.bricks = map4(this.gameArea, this.bricksX, this.bricksY);
 
         this.player1Paddle = new Paddle(this.gameArea.gameX + 10, this.gameArea.gameY + (this.gameArea.gameHeight - paddleSize) / 2, paddleSize / 10, paddleSize, 'white', paddleSpeed, 'vertical');
         this.player2Paddle = new Paddle(this.gameArea.gameX + this.gameArea.gameWidth - 20, this.gameArea.gameY + (this.gameArea.gameHeight - paddleSize) / 2, paddleSize / 10, paddleSize, 'white', paddleSpeed, 'vertical');
@@ -253,16 +223,11 @@ export class Tournament {
             return;
         }
 
-        if (this.map == 1)
-            this.bricks = [];
-        else if (this.map == 2)
-            this.bricks = map1(this.gameArea, this.bricksX, this.bricksY);
-        else if (this.map == 3)
-            this.bricks = map2(this.gameArea, this.bricksX, this.bricksY);
-        else if (this.map == 4)
-            this.bricks = map3(this.gameArea, this.bricksX, this.bricksY);
-        else if (this.map == 5)
-            this.bricks = map4(this.gameArea, this.bricksX, this.bricksY);
+        if (this.map == 1) this.bricks = [];
+        else if (this.map == 2) this.bricks = map1(this.gameArea, this.bricksX, this.bricksY);
+        else if (this.map == 3) this.bricks = map2(this.gameArea, this.bricksX, this.bricksY);
+        else if (this.map == 4) this.bricks = map3(this.gameArea, this.bricksX, this.bricksY);
+        else if (this.map == 5) this.bricks = map4(this.gameArea, this.bricksX, this.bricksY);
 
         this.player1Paddle.resetPosition();
         this.player2Paddle.resetPosition();
@@ -365,39 +330,32 @@ export class Tournament {
         this.wins[winner]++;
         console.log(`Enregistrement du score pour ${winner}`);
 
-        // Appel de la fonction d'enregistrement
-        enregistrerScoresFinTournoi(this.activePlayers, this.wins)
-            .then(() => {
-                //console.log('Score enregistré avec succès');
-                this.currentMatch++;
+        this.currentMatch++;
 
-                if (this.currentMatch < this.matches.length) {
-                    this.startMatch();
-                } else {
-                    this.setupNextRound();
-                }
-            })
-            .catch(error => {
-                console.error('Erreur lors de l\'enregistrement du score', error);
-            });
-    }
-
-
-    setupNextRound() {
-        let maxWins = Math.max(...Object.values(this.wins));
-        let topPlayers = Object.keys(this.wins).filter(player => this.wins[player] === maxWins);
-
-        if (topPlayers.length === 1) {
-            this.score.drawTournamentScore(this.wins, this.round, this.activePlayers);
-            this.score.drawTournamentEnd(topPlayers[0]);
-        } else {
-            this.matches = this.createAllMatches(topPlayers);
-            this.currentMatch = 0;
-            this.activePlayers = topPlayers;
-            this.round++;
-
-
+        if (this.currentMatch < this.matches.length) {
             this.startMatch();
+        } else {
+            this.setupNextRound();
         }
     }
+
+    setupNextRound() {
+    let maxWins = Math.max(...Object.values(this.wins));
+    let topPlayers = Object.keys(this.wins).filter(player => this.wins[player] === maxWins);
+
+    if (topPlayers.length === 1) {
+        this.score.drawTournamentScore(this.wins, this.round, this.activePlayers);
+        this.score.drawTournamentEnd(topPlayers[0]);
+
+        // Correction ici : appel de terminerTournoi avec .bind(this)
+        terminerTournoi.bind(this)(this.wins); // Lie le contexte correct pour accéder aux méthodes de l'objet
+    } else {
+        this.matches = this.createAllMatches(topPlayers);
+        this.currentMatch = 0;
+        this.activePlayers = topPlayers;
+        this.round++;
+
+        this.startMatch();
+    }
+}
 }
