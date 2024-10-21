@@ -9,6 +9,7 @@ import { map1, map2, map3, map4 } from '../scenes/maps/VS.js';
 // Déclaration de la variable pour le contrat
 let tournamentContract;
 let web3Initialized = false;
+let historiqueTournois = JSON.parse(localStorage.getItem('historiqueTournois')) || {};
 
 // Fonction pour charger Web3
 function chargerWeb3() {
@@ -19,7 +20,6 @@ function chargerWeb3() {
             return;
         }
 
-        // Charger dynamiquement Web3 si ce n'est pas encore fait
         const script = document.createElement('script');
         script.src = '/srcs/site/static/js/web3.min.js';
         script.onload = () => {
@@ -82,29 +82,93 @@ async function getCompte() {
     return comptes[0];
 }
 
-// Fonction pour enregistrer le gagnant sur la blockchain
-async function enregistrerGagnantTournoi(gagnant) {
+// Fonction pour récupérer le nombre de tournois gagnés par les joueurs
+async function afficherTournoisGagnes(joueurs) {
     try {
-        const compte = await getCompte();
-        await tournamentContract.methods.enregistrerGagnant(gagnant)
-            .send({ from: compte, gas: 500000 });
-        console.log('Gagnant du tournoi enregistré avec succès');
+        const resultatsTournois = {};
+        for (const joueur of joueurs) {
+            const tournoisGagnes = await tournamentContract.methods.getTournamentWins(joueur).call();
+            resultatsTournois[joueur] = tournoisGagnes;
+        }
+        return resultatsTournois;
     } catch (error) {
-        console.error('Erreur lors de l\'enregistrement du gagnant', error);
+        console.error('Erreur lors de la récupération des tournois gagnés:', error);
     }
 }
 
-// Fonction pour terminer le tournoi et appeler drawTournamentEnd
-function terminerTournoi(wins) {
+// Fonction pour récupérer l'horodatage à partir de la transaction blockchain
+async function getBlockchainTimestamp(transactionReceipt) {
+    const blockNumber = transactionReceipt.blockNumber;
+    const block = await web3.eth.getBlock(blockNumber);
+    const timestamp = block.timestamp;  // Récupérer le timestamp du bloc
+    return new Date(timestamp * 1000);  // Convertir le timestamp en objet Date
+}
+
+// Fonction pour enregistrer le gagnant sur la blockchain et récupérer le timestamp de la transaction
+async function enregistrerGagnantTournoi(gagnant) {
+    try {
+        const compte = await getCompte();
+        const transactionReceipt = await tournamentContract.methods.enregistrerGagnant(gagnant)
+            .send({ from: compte, gas: 500000 });
+        console.log('Gagnant du tournoi enregistré avec succès');
+
+        // Récupérer l'horodatage à partir de la transaction blockchain
+        const date = await getBlockchainTimestamp(transactionReceipt);
+        return date;
+    } catch (error) {
+        console.error('Erreur lors de l\'enregistrement du gagnant', error);
+        return null;
+    }
+}
+
+// Fonction pour terminer le tournoi et afficher les victoires avec l'heure et la date
+async function terminerTournoi(wins) {
     const gagnant = Object.keys(wins).reduce((a, b) => (wins[a] > wins[b] ? a : b));
     console.log(`Le gagnant est : ${gagnant}`);
 
-    // Assurez-vous que le contexte "this" est correctement défini
-    // Appel à drawTournamentEnd pour afficher le gagnant et le tableau des scores
+    // Appel pour enregistrer le gagnant sur la blockchain et récupérer la date de la transaction
+    const date = await enregistrerGagnantTournoi(gagnant);
+
+    if (date) {
+        const dateStr = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+
+        // Initialiser l'historique pour le joueur s'il n'existe pas encore
+        if (!historiqueTournois[gagnant]) {
+            historiqueTournois[gagnant] = [];  // Créer un tableau pour les victoires du joueur
+        }
+
+        // Ajouter la nouvelle victoire avec la date à l'historique du gagnant
+        historiqueTournois[gagnant].push(dateStr);
+        localStorage.setItem('historiqueTournois', JSON.stringify(historiqueTournois));  // Sauvegarder dans localStorage
+    }
+
+    // Affichage du message de fin sur le canvas
     this.score.drawTournamentEnd(gagnant);
 
-    // Appel pour enregistrer le gagnant sur la blockchain
-    enregistrerGagnantTournoi(gagnant);
+    // Affichage du nombre de tournois gagnés par chaque joueur
+    const tournoisGagnes = await afficherTournoisGagnes(this.activePlayers);
+
+    // Mettre à jour le tableau des scores sur la page HTML (scoreboard)
+    const scoreboard = document.getElementById('scoreboard');
+    scoreboard.innerHTML = `<h3>Scoreboard</h3>`;
+
+    // Pour chaque joueur, afficher les informations de score et l'historique
+    for (const joueur in tournoisGagnes) {
+        const playerScore = document.createElement('p');
+        playerScore.textContent = `${joueur}: ${tournoisGagnes[joueur]} tournament(s) won`;
+        scoreboard.appendChild(playerScore);
+
+        // Si le joueur a un historique, afficher ses victoires avec les dates
+        if (historiqueTournois[joueur] && historiqueTournois[joueur].length > 0) {
+            const historique = document.createElement('ul');
+            historiqueTournois[joueur].forEach((date, index) => {
+                const historiqueItem = document.createElement('li');
+                historiqueItem.textContent = `Tournament ${index + 1}: won the ${date}`;
+                historique.appendChild(historiqueItem);
+            });
+            scoreboard.appendChild(historique);
+        }
+    }
 }
 
 // Fonction principale pour initialiser et lancer le jeu

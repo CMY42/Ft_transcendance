@@ -9,6 +9,7 @@ contract TournamentScore {
 
     Player[] public players;
     string public winner;  // Nouvelle variable pour stocker le gagnant du tournoi
+    mapping(string => uint) public tournamentWins;  // Nouveau mapping pour suivre les tournois gagnés
 
     // Ajouter un événement pour suivre les ajouts de joueurs et du gagnant
     event PlayerAdded(string name, uint score);
@@ -58,15 +59,21 @@ contract TournamentScore {
         }
     }
 
-    // Nouvelle fonction pour enregistrer le gagnant du tournoi
+    // Fonction pour enregistrer le gagnant du tournoi
     function enregistrerGagnant(string memory _winner) public {
         require(bytes(_winner).length > 0, "Le nom du gagnant ne peut pas etre vide");
         winner = _winner;  // Stocker le nom du gagnant
+        tournamentWins[_winner]++;  // Incrémenter le nombre de tournois gagnés par le joueur
         emit TournamentWinner(_winner);  // Emettre un événement pour le gagnant
     }
 
     // Récupérer le gagnant du tournoi
     function getWinner() public view returns (string memory) {
         return winner;
+    }
+
+    // Récupérer le nombre de tournois gagnés par un joueur
+    function getTournamentWins(string memory playerName) public view returns (uint) {
+        return tournamentWins[playerName];
     }
 }
