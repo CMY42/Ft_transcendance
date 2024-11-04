@@ -21,7 +21,7 @@ function chargerWeb3() {
         }
 
         const script = document.createElement('script');
-        script.src = '/srcs/site/static/js/web3.min.js';
+        script.src = 'https://localhost/static/js/web3.min.js';
         script.onload = () => {
             if (typeof window.Web3 !== 'undefined') {
                 console.log('Web3 chargé avec succès');
@@ -54,14 +54,14 @@ async function initWeb3() {
         await window.ethereum.enable();
     } else {
         console.log('Connecting to local blockchain');
-        window.web3 = new Web3(new Web3.providers.HttpProvider('http://127.0.0.1:8545'));
+        window.web3 = new Web3(new Web3.providers.HttpProvider('https://localhost/ganache/'));
     }
 
-    const tournamentContractJSON = await fetch('http://127.0.0.1:5500/srcs/site/static/build/contracts/TournamentScore.json')
-        .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok');
-            return response.json();
-        });
+    const tournamentContractJSON = await fetch('https://localhost/contracts/TournamentScore.json')
+    .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    });
 
     const contractABI = tournamentContractJSON.abi;
     const networkId = Object.keys(tournamentContractJSON.networks)[0];

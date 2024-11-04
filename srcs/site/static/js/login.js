@@ -1,29 +1,6 @@
 document.addEventListener('DOMContentLoaded', () =>
 {
     const form = document.getElementById('loginForm');
-	const messageContainer = document.getElementById('messageContainer');
-
-	function showMessage(message, type = 'success')
-	{
-		messageContainer.innerHTML =
-		`
-		<div class="alert alert-${type}" role="aler">
-			${message}
-		</div>
-		`;
-	}
-
-	const successMessage = localStorage.getItem('successMessage');
-	if (successMessage)
-	{
-		showMessage(successMessage, 'success');
-		localStorage.removeItem('successMessage');
-
-		setTimeout(() =>
-		{
-			messageContainer.innerHTML = '';
-		}, 2000);
-	}
 
     form.addEventListener('submit', async (event) =>
 	{
@@ -60,11 +37,8 @@ document.addEventListener('DOMContentLoaded', () =>
 			{
                 localStorage.setItem('accessToken', accessToken);
                 localStorage.setItem('refreshToken', refreshToken);
-                showMessage('Connexion réussie !', 'success');
-				setTimeout(() =>
-				{
-					window.location.href = '../index.html';
-				}, 1500);
+				localStorage.setItem('successMessage', 'Connexion réussie !');
+				window.location.href = 'profile.html';
             }
 			else
 			{

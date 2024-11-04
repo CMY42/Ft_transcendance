@@ -1,4 +1,4 @@
-// settingsGame.js
+import { storeGameSession } from './games/registerGame.js';
 
 const MIN_PLAYERS = 2;
 const VERSUS_MAX = 4;
@@ -34,22 +34,21 @@ document.getElementById('map').addEventListener('input', () => {
 function updateOptions() {
     const mode = document.getElementById('mode').value;
     const maxScoreField = document.getElementById('maxScore');
-    document.getElementById('player-controls-wrapper').innerHTML = '';
-    document.getElementById('player-key-wrapper').innerHTML = '';
+    document.getElementById('player-controls-wrapper').innerHTML = ''; 
+    document.getElementById('player-key-wrapper').innerHTML = ''; 
 
     let initialPlayers = MIN_PLAYERS;
     let maxPlayers = getMaxPlayersForMode(mode);
 
     if (mode === 'brickBreaker') {
         maxScoreField.disabled = true;
-        document.getElementById('maxScoreValue').textContent = 'N/A';
+        document.getElementById('maxScoreValue').textContent = 'N/A'; 
     } else {
         maxScoreField.disabled = false;
         document.getElementById('maxScoreValue').textContent = maxScoreField.value;
     }
 
-    let numberOfControls = mode === 'tournament' ? 2 : initialPlayers;
-    for (let i = 0; i < numberOfControls; i++) {
+    for (let i = 0; i < 2; i++) {
         addPlayerField(i);
     }
 
@@ -68,9 +67,14 @@ function addPlayer() {
 
     let toAdd = getPlayersToAddOrRemove(mode);
     const currentPlayers = playerFields.length;
+    
     for (let i = 0; i < toAdd; i++) {
         if (currentPlayers + i < maxPlayers) {
-            addPlayerField(currentPlayers + i);
+            if (currentPlayers + i >= 2 && mode === 'tournament') {
+                addPlayerField(currentPlayers + i, true);
+            } else {
+                addPlayerField(currentPlayers + i);
+            }
         }
     }
 
@@ -80,16 +84,19 @@ function addPlayer() {
 
 function removePlayer() {
     const mode = document.getElementById('mode').value;
-    const playerFields = document.getElementsByClassName('player-control');
-    const keyFields = document.getElementsByClassName('player-controls');
-
+    const column1 = document.getElementById('column1');
+    const column2 = document.getElementById('column2');
+    const playerContainersCol1 = column1.getElementsByClassName('player-container');
+    const playerContainersCol2 = column2.getElementsByClassName('player-container');
+    
     let toRemove = getPlayersToAddOrRemove(mode);
 
     for (let i = 0; i < toRemove; i++) {
-        if (playerFields.length > MIN_PLAYERS) {
-            playerFields[playerFields.length - 1].remove();
-            if (mode !== 'tournament') {
-                keyFields[keyFields.length - 1].remove();
+        if (playerContainersCol1.length + playerContainersCol2.length > MIN_PLAYERS) {
+            if (playerContainersCol1.length > playerContainersCol2.length) {
+                playerContainersCol1[playerContainersCol1.length - 1].remove();
+            } else {
+                playerContainersCol2[playerContainersCol2.length - 1].remove();
             }
         }
     }
@@ -98,30 +105,172 @@ function removePlayer() {
     updateRemovePlayerButton();
 }
 
-function addPlayerField(index) {
+function addPlayerField(index, noControls = false) {
     const controlsWrapper = document.getElementById('player-controls-wrapper');
-    const keyWrapper = document.getElementById('player-key-wrapper');
-    const divPlayer = document.createElement('div');
-    const divKeys = document.createElement('div');
+    let column;
 
-    divPlayer.classList.add('player-control');
+    if (index % 2 === 0) {
+        if (!document.getElementById('column1')) {
+            column = document.createElement('div');
+            column.classList.add('col-md-5', 'mx-auto');
+            column.setAttribute('id', 'column1');
+            controlsWrapper.appendChild(column);
+        } else {
+            column = document.getElementById('column1');
+        }
+    } else {
+        if (!document.getElementById('column2')) {
+            column = document.createElement('div');
+            column.classList.add('col-md-5', 'mx-auto');
+            column.setAttribute('id', 'column2');
+            controlsWrapper.appendChild(column);
+        } else {
+            column = document.getElementById('column2');
+        }
+    }
+
+    const playerContainer = document.createElement('div');
+    playerContainer.classList.add('player-container', 'mt-5', 'mb-5', 'text-center');
+
+    const playerTitle = document.createElement('h5');
+    playerTitle.textContent = `Player ${index + 1}`;
+    playerContainer.appendChild(playerTitle);
+
+    const divPlayer = document.createElement('div');
+    divPlayer.classList.add('player-control', 'mb-3');
     divPlayer.innerHTML = `
-        <label>Player ${index + 1} Name:</label>
-        <input type="text" id="player${index}" placeholder="Enter player name"><br>
+        <input type="text" class="form-control" id="player${index}" placeholder="Enter player name" autocomplete="off">
+		<br>
+		<button class="btn btn-outline-primary connect-btn" data-player-index="${index}" data-bs-toggle="modal" data-bs-target="#loginModal">Connect</button>
     `;
-    controlsWrapper.appendChild(divPlayer);
+    playerContainer.appendChild(divPlayer);
 
     const mode = document.getElementById('mode').value;
-    if (mode !== 'tournament' || index < 2) {
-        divKeys.classList.add('player-controls');
-        divKeys.innerHTML = `
-            <label>Up Key for Player ${index + 1}:</label>
-            <input type="text" id="player${index}Up" placeholder="Enter Up key"><br>
-            <label>Down Key for Player ${index + 1}:</label>
-            <input type="text" id="player${index}Down" placeholder="Enter Down key"><br>
-        `;
-        keyWrapper.appendChild(divKeys);
+
+    let upLabel = "Up Key";
+    let downLabel = "Down Key";
+
+    if (mode === 'brickBreaker' || (mode === 'lastManStanding' && index >= 2)) {
+        upLabel = "Left Key";
+        downLabel = "Right Key";
     }
+
+    let touchTitle = "";
+    if (mode === 'tournament') {
+        if (index % 2 === 0) {
+            touchTitle = "Left players";
+        } else {
+            touchTitle = "Right players";
+        }
+    }
+
+    if (noControls) {
+        column.appendChild(playerContainer);
+        return;
+    }
+
+    const divKeys = document.createElement('div');
+    divKeys.classList.add('player-controls', 'mb-3');
+
+    if (mode === 'tournament') {
+        const touchTitleElement = document.createElement('h5');
+        touchTitleElement.textContent = touchTitle;
+        touchTitleElement.classList.add('text-center', 'mt-3', 'mb-3');
+        divKeys.appendChild(touchTitleElement);
+    }
+
+    divKeys.innerHTML += `
+        <div class="mb-2 d-flex align-items-center mx-3">
+            <label class="col-form-label text-start text-nowrap key-label">${upLabel} :</label>
+            <div class="flex-grow-1 ms-4">
+                <input type="text" class="form-control touch-field" id="player${index}Up" placeholder="Press a key" autocomplete="off">
+            </div>
+        </div>
+        <div class="mb-2 d-flex align-items-center mx-3">
+            <label class="col-form-label text-start text-nowrap key-label">${downLabel} :</label>
+            <div class="flex-grow-1 ms-4">
+                <input type="text" class="form-control touch-field" id="player${index}Down" placeholder="Press a key" autocomplete="off">
+            </div>
+        </div>
+    `;
+    playerContainer.appendChild(divKeys);
+
+    if (mode === 'tournament') {
+        column.appendChild(divKeys);
+        column.appendChild(playerContainer);
+    } else {
+        playerContainer.appendChild(divKeys);
+        column.appendChild(playerContainer);
+    }
+
+	document.getElementById(`player${index}Up`).addEventListener('keydown', function(event) {
+		event.preventDefault();
+		const key = event.key;
+		let displayValue = key;
+	
+		// Vérification et conversion des flèches en icônes Unicode
+		if (key === "ArrowUp") displayValue = "↑";
+		else if (key === "ArrowDown") displayValue = "↓";
+		else if (key === "ArrowLeft") displayValue = "←";
+		else if (key === "ArrowRight") displayValue = "→";
+	
+		// Vérification pour n'autoriser que les lettres minuscules, chiffres, et flèches directionnelles
+		if ((/^[a-z0-9]$/.test(key)) || ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(key)) {
+            if(event.key != 'Tab')
+            {
+			    this.value = displayValue; // Affiche l'icône
+			    this.setAttribute('data-key', key); // Stocke la vraie touche dans un attribut data-key
+            }
+            else
+            {
+                event.preventDefault();
+                document.getElementById(`player${index}Down`).focus(); // Passer au champ suivant (Down key)
+            }
+		} else {
+			alert("Only lowercase letters, numbers, and arrow keys are allowed.");
+		}
+	});
+	
+	document.getElementById(`player${index}Down`).addEventListener('keydown', function(event) {
+		event.preventDefault();
+		const key = event.key;
+		let displayValue = key;
+	
+		// Vérification et conversion des flèches en icônes Unicode
+		if (key === "ArrowUp") displayValue = "↑";
+		else if (key === "ArrowDown") displayValue = "↓";
+		else if (key === "ArrowLeft") displayValue = "←";
+		else if (key === "ArrowRight") displayValue = "→";
+	
+		// Vérification pour n'autoriser que les lettres minuscules, chiffres, et flèches directionnelles
+		if ((/^[a-z0-9]$/.test(key)) || ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(key)) {
+            if(event.key != 'Tab')
+            {
+			    this.value = displayValue; // Affiche l'icône
+			    this.setAttribute('data-key', key); // Stocke la vraie touche dans un attribut data-key
+            }
+            else
+            {
+                event.preventDefault();
+                if (mode == 'tournament')
+                {
+                    if(index == 0)
+                        document.getElementById(`player${0}`).focus();
+                    else
+                        document.getElementById(`player${1}`).focus();
+                }
+                else
+                {
+                    const nextPlayer = document.getElementById(`player${index + 1}`);
+                    if (nextPlayer) {
+                        nextPlayer.focus(); // Passe au champ suivant (nom du joueur suivant)
+                    }
+                }
+            }
+		} else {
+			alert("Only lowercase letters, numbers, and arrow keys are allowed.");
+		}
+	});
 }
 
 function updateAddPlayerButton() {
@@ -160,32 +309,61 @@ function getMaxPlayersForMode(mode) {
 }
 
 updateOptions();
-//MODIF POUR LA BLOCKCHAIN
+
 document.getElementById('startGame').addEventListener('click', () => {
     const mode = document.getElementById('mode').value;
     const playerFields = document.getElementsByClassName('player-control');
+    const usedKeys = new Set();
+    const usedNames = new Set();
 
     let allFieldsValid = true;
+
     for (let i = 0; i < playerFields.length; i++) {
         const playerName = document.getElementById(`player${i}`).value.trim();
 
-        // Vérifier les touches seulement pour les deux premiers joueurs (Player 1 et Player 2)
-        if (i < 2) {
-            const upKey = document.getElementById(`player${i}Up`).value.trim();
-            const downKey = document.getElementById(`player${i}Down`).value.trim();
-            if (!playerName || !upKey || !downKey) {
-                allFieldsValid = false;
-                alert(`Player ${i + 1} must have a name and keys assigned!`);
-                break;
-            }
-        } else {
-            // Pour les joueurs supplémentaires, vérifier uniquement le nom du joueur
-            if (!playerName) {
-                allFieldsValid = false;
-                alert(`Player ${i + 1} must have a name!`);
-                break;
-            }
+        let upKey = '';
+        let downKey = '';
+
+        if (mode !== 'tournament' || i < 2) {
+            upKey = document.getElementById(`player${i}Up`).getAttribute('data-key') || document.getElementById(`player${i}Up`).value.trim();
+            downKey = document.getElementById(`player${i}Down`).getAttribute('data-key') || document.getElementById(`player${i}Down`).value.trim();
         }
+
+        if (!playerName || (mode !== 'tournament' && (!upKey || !downKey))) {
+            allFieldsValid = false;
+            alert(`Player ${i + 1} must have a name and keys assigned!`);
+            break;
+        }
+
+        if (usedNames.has(playerName)) {
+            allFieldsValid = false;
+            alert(`The name '${playerName}' is already used by another player. Please choose a different name.`);
+            break;
+        }
+
+        if (mode !== 'tournament' || i < 2) {
+            if (upKey === downKey) {
+                allFieldsValid = false;
+                alert(`Player ${i + 1} cannot have the same key for both Up and Down.`);
+                break;
+            }
+
+            if (usedKeys.has(upKey)) {
+                allFieldsValid = false;
+                alert(`The key '${upKey}' is already assigned to another player.`);
+                break;
+            }
+            if (usedKeys.has(downKey)) {
+                allFieldsValid = false;
+                alert(`The key '${downKey}' is already assigned to another player.`);
+                break;
+            }
+
+            usedKeys.add(upKey);
+            usedKeys.add(downKey);
+        }
+
+        usedNames.add(playerName);
     }
 
     if (allFieldsValid) {
@@ -194,14 +372,16 @@ document.getElementById('startGame').addEventListener('click', () => {
         for (let i = 0; i < playerFields.length; i++) {
             const playerName = document.getElementById(`player${i}`).value;
 
-            if (i < 2) {
-                const upKey = document.getElementById(`player${i}Up`).value;
-                const downKey = document.getElementById(`player${i}Down`).value;
-                playerKeys.push([upKey, downKey]);
-            } else {
-                playerKeys.push([null, null]);  // Ajouter des valeurs null pour les joueurs sans touches
+            let upKey = '';
+            let downKey = '';
+
+            if (mode !== 'tournament' || i < 2) {
+                upKey = document.getElementById(`player${i}Up`).getAttribute('data-key') || document.getElementById(`player${i}Up`).value;
+                downKey = document.getElementById(`player${i}Down`).getAttribute('data-key') || document.getElementById(`player${i}Down`).value;
             }
+
             playerNames.push(playerName);
+            playerKeys.push([upKey, downKey]);
         }
 
         const maxScore = document.getElementById('maxScore').value;
@@ -217,10 +397,11 @@ document.getElementById('startGame').addEventListener('click', () => {
             mode, playerNames, playerKeys, maxScore, paddleSpeed, paddleSize, bounceMode, ballSpeed, ballAcceleration, numBalls, map
         }));
 
+        storeGameSession();
         window.location.href = 'game.html';
     }
 });
-//////////////Jusqu'ici
+
 function resetToDefault() {
     document.getElementById('maxScore').value = 10;
     document.getElementById('maxScoreValue').textContent = 10;
@@ -247,3 +428,12 @@ function resetToDefault() {
 }
 
 document.getElementById('defaultSetting').addEventListener('click', resetToDefault);
+
+document.addEventListener('DOMContentLoaded', () => {
+    const accessToken = localStorage.getItem('accessToken');
+    const matchmakingSection = document.getElementById('matchmakingSection');
+
+    if (!accessToken && matchmakingSection) {
+        matchmakingSection.style.display = 'none';
+    }
+});

@@ -31,24 +31,24 @@ export class Score {
 
     drawFlat(text, px, color, align, x, y, angle = 0) {
         this.ctx.save(); // Sauvegarder l'état actuel du contexte
-    
+
         // Définir les propriétés du texte
         this.ctx.font = `${px}px ${this.font.family}`;
         this.ctx.fillStyle = color;
         this.ctx.textAlign = align;
-    
+
         // Déplacer le contexte au point (x, y)
         this.ctx.translate(x, y);
-    
+
         // Appliquer la rotation
         this.ctx.rotate(angle * Math.PI / 180);
-    
+
         // Dessiner le texte à l'origine (0, 0) car le contexte est déjà déplacé
         this.ctx.fillText(text, 0, 0);
-    
+
         this.ctx.restore(); // Restaurer l'état initial du contexte
     }
-    
+
 
     drawTitle(gameTitle) {
         this.ctx.font = `30px ${this.font.family}`;
@@ -92,7 +92,7 @@ export class Score {
     drawTournamentScore(wins, round, activePlayers) {
         const startX = this.gameArea.gameX + this.gameArea.gameWidth / 2;
         let startY = this.gameArea.gameY + this.gameArea.gameHeight + 40;
-    
+
         this.ctx.font = `20px ${this.font.family}`;
         this.ctx.fillStyle = 'white';
         this.ctx.textAlign = 'center';
@@ -101,12 +101,12 @@ export class Score {
         startY += 30;
 
         this.finalTournamentScore = [];
-    
+
         for (const [player, winCount] of Object.entries(wins)) {
             if (activePlayers.includes(player)) {
                 this.ctx.fillText(`${player}: ${winCount} wins`, startX, startY);
             } else {
-                this.ctx.fillText(`${player}: ${winCount} wins`, startX, startY); 
+                this.ctx.fillText(`${player}: ${winCount} wins`, startX, startY);
                 this.ctx.beginPath();
                 this.ctx.moveTo(startX - 60, startY - 10);
                 this.ctx.lineTo(startX + 60, startY - 10);
@@ -129,7 +129,7 @@ export class Score {
         this.ctx.fillText(`${winner} wins the tournament!`, this.ctx.canvas.width / 2, this.ctx.canvas.height / 2);
 
         // TEMPORAIRE ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        this.finalTournamentScore.sort((a, b) => b[1] - a[1]); 
+        this.finalTournamentScore.sort((a, b) => b[1] - a[1]);
 
         const scoreboard = document.getElementById('scoreboard');
         scoreboard.innerHTML = `<h3>Scoreboard</h3>`;

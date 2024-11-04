@@ -23,7 +23,7 @@ create-directories:
 set-permissions:
 	@echo "${GREEN}\nSETTING PERMISSIONS FOR \"${POSTGRES_DIR}/data\" DATA DIRECTORY ${NC}"
 	@if [ ${UNAME_S} = "Darwin" ]; then \
-		sudo chown -R ${USERNAME}:${GROUPENAME} ${POSTGRES_DIR}/; \
+		sudo chown -R ${USERNAME}:${GROUPNAME} ${POSTGRES_DIR}/; \
 	elif [ ${UNAME_S} = "Linux" ]; then \
 		sudo chown -R 102:104 ${POSTGRES_DIR}/; \
 	fi
@@ -61,13 +61,17 @@ down-rmi:
 	@docker-compose -f $(COMPOSE_FILE) down --rmi all --volumes
 
 clean: down
+	@echo "${GREEN}\nSUPPRIMANT LE DOSSIER BUILD DE TRUFFLE ${NC}"
+	sudo rm -rf ./srcs/requirements/truffle/build
 
 # Target to remove all resources and data
 fclean: down-rmi
 	@$(MAKE) dangling
+	@echo "${GREEN}\nSUPPRIMANT LE DOSSIER BUILD DE TRUFFLE ${NC}"
+	sudo rm -rf ./srcs/requirements/truffle/build  # Ajout de la suppression du dossier build dans fclean
 	@if [ -d "${POSTGRES_DIR}/" ]; then \
   		echo "${GREEN}\nREMOVING SAVED DATA IN HOST MACHINE ${NC}"; \
-  		sudo chown -R ${USERNAME}:${GROUPENAME} ${POSTGRES_DIR}/; \
+  		sudo chown -R ${USERNAME}:${GROUPNAME} ${POSTGRES_DIR}/; \
   		sudo chmod -R 775 ${POSTGRES_DIR}/; \
   		rm -rf ${POSTGRES_DIR}/*; \
   		if [ ${UNAME_S} = "Darwin" ]; then \
@@ -75,7 +79,7 @@ fclean: down-rmi
 		fi; \
 	fi
 	@echo "${GREEN}\nCHANGING PERMISSIONS FOR "site/media",  "site/static" AND "/site/profile_photos" to ${USERNAME}:${GROUPNAME} ${NC}";
-	@sudo chown -R ${USERNAME}:${GROUPENAME} ${SITE_DIR}/
+	@sudo chown -R ${USERNAME}:${GROUPNAME} ${SITE_DIR}/
 	@echo "${GREEN}\nREMOVING IMAGES IN srcs/site/profile_photos ${NC}";
 	rm -rf ${SITE_DIR}/profile_photos/users/*
 
