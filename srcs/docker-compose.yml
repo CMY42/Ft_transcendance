@@ -41,7 +41,7 @@ services:
     depends_on:
       - postgres
     volumes:
-    - /home/cmy/Downloads/transcendence_am-main/srcs/site/profile_photos:/usr/src/app/media/profile_photos
+    - ./site/profile_photos:/usr/src/app/media/profile_photos
     restart: always
 
   nginx:
@@ -100,7 +100,7 @@ services:
     working_dir: /app
     depends_on:
       - ganache
-    command: ["sh", "-c", "deploy-if-needed.sh"]
+    command: ["sh", "-c", "deploy-if-needed.sh && while :; do sleep 2073600; done"]
     restart: "no"
 
 networks:

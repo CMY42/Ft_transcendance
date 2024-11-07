@@ -41,11 +41,7 @@ echo "Initializing the database"
   fi
 
   # Add auth container ip adress to  pg_hba.conf
-  if [ -n "$DJANGO_CONTAINER_IP" ]; then
-    echo "host    all             all             ${DJANGO_CONTAINER_IP}/32           scram-sha-256" >> "$PGDATA"/pg_hba.conf
-  else
-    echo "host    all             all             127.0.0.1/32           scram-sha-256" >> "$PGDATA"/pg_hba.conf
-  fi
+  echo "host    all             all             $DJANGO_CONTAINER_IP/32           scram-sha-256" >> "$PGDATA"/pg_hba.conf
 
   # pg_ctl is a utility for initializing, starting, stopping, or restarting a PostgreSQL instance.
   # -D for data directory: the directory where the database cluster will be stored

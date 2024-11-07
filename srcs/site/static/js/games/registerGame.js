@@ -1,3 +1,70 @@
+import { terminerTournoi } from '../../game/js/mods/tournament.js';
+let tournamentContract;
+let web3Initialized = false;
+
+// Fonction pour charger Web3
+async function chargerWeb3() {
+    return new Promise((resolve, reject) => {
+        if (typeof window.Web3 !== 'undefined') {
+            console.log('Web3 est déjà chargé.');
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://localhost/static/js/web3.min.js';
+        script.onload = () => {
+            if (typeof window.Web3 !== 'undefined') {
+                console.log('Web3 chargé avec succès');
+                resolve();
+            } else {
+                reject(new Error('Web3 n\'a pas pu être chargé'));
+            }
+        };
+        script.onerror = () => {
+            reject(new Error('Échec du chargement de Web3'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
+// Fonction pour initialiser Web3 et le contrat
+async function initWeb3() {
+    if (web3Initialized) {
+        console.log('Web3 est déjà initialisé.');
+        return;
+    }
+    await chargerWeb3();
+    window.web3 = new Web3(new Web3.providers.HttpProvider('https://localhost/ganache/'));
+
+    const tournamentContractJSON = await fetch('https://localhost/contracts/TournamentScore.json').then(response => response.json());
+    const contractABI = tournamentContractJSON.abi;
+    const networkId = Object.keys(tournamentContractJSON.networks)[0];
+    const contractAddress = tournamentContractJSON.networks[networkId]?.address;
+
+    if (!contractAddress) throw new Error('Adresse du contrat non trouvée.');
+    tournamentContract = new web3.eth.Contract(contractABI, contractAddress);
+    web3Initialized = true;
+    console.log('Contrat initialisé:', tournamentContract);
+}
+
+// Fonction pour enregistrer le gagnant sur la blockchain
+async function enregistrerGagnantSurBlockchain(gagnant) {
+    try {
+        await initWeb3();
+        const compte = (await web3.eth.getAccounts())[0];
+        const txReceipt = await tournamentContract.methods.enregistrerGagnant(gagnant).send({ from: compte, gas: 500000 });
+        const block = await web3.eth.getBlock(txReceipt.blockNumber);
+        return new Date(block.timestamp * 1000);
+    } catch (error) {
+        console.error('Erreur lors de l\'enregistrement du gagnant sur la blockchain', error);
+        return null;
+    }
+}
+
+export { tournamentContract, enregistrerGagnantSurBlockchain };
+
+///////////////////////////////////
+
 function getGameModeCode(mode) {
     switch (mode.toLowerCase()) {
         case 'versus':
@@ -17,7 +84,7 @@ async function sendGameSessionToAPI(sessionData) {
     const token = await getValidToken();
     if (!token) return;
 
-    sessionData.session.mode = getGameModeCode(sessionData.session.mode);	
+    sessionData.session.mode = getGameModeCode(sessionData.session.mode);
 
     try {
         const response = await fetch('https://localhost:8000/api/game/register-game-session/', {
@@ -120,7 +187,7 @@ export function registerGameWinner(winnerAlias) {
     const sessionData = JSON.parse(localStorage.getItem('gameSession'));
     if (sessionData) {
         const winners = winnerAlias.split(' & ').map(name => name.trim());
-        
+
         if (winners.length === 2) {
             sessionData.winner1 = winners[0];
             sessionData.winner2 = winners[1];
@@ -133,13 +200,24 @@ export function registerGameWinner(winnerAlias) {
     }
 }
 
-export function registerTournamentWinner(finalWinnerAlias) {
+export async function registerTournamentWinner(finalWinnerAlias) {
     const sessionData = JSON.parse(localStorage.getItem('gameSession'));
 
     if (sessionData) {
         sessionData.winner1 = finalWinnerAlias;
         delete sessionData.winner2;
 
-        sendTournamentSessionToAPI(sessionData);  // Appeler l'API de tournoi
+        // Enregistrer le tournoi via l'API
+        await sendTournamentSessionToAPI(sessionData);
+
+        // Enregistrer le gagnant du tournoi sur la blockchain
+        const date = await enregistrerGagnantSurBlockchain(finalWinnerAlias);
+        if (date) {
+            console.log(`Gagnant enregistré sur la blockchain le ${date}`);
+
+            // Appeler terminerTournoi uniquement pour afficher l'historique
+            const wins = { [finalWinnerAlias]: 1 };
+            await terminerTournoi(wins);
+        }
     }
 }

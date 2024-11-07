@@ -26,6 +26,7 @@ export class BrickBreaker {
         this.bricks2 = [];
         this.bricksX = 50;
         this.bricksY = 20;
+		this.langue = langue;
 
         
         let team1Names = `${playerNames[0]}`;
@@ -40,10 +41,12 @@ export class BrickBreaker {
         if (langue == 0) {
             this.gameTitle = "Brick Breaker Mode";
             this.gameSubtitle = "First to ";
-        }
-        else if (langue == 1) {
-            this.gameTitle = "Mode Casse-Briques";
+        } else if (langue == 1) {
+            this.gameTitle = "Mode Casse-briques";
             this.gameSubtitle = "Premier à ";
+        } else if (langue == 2) {
+            this.gameTitle = "Modo Rompe Ladrillos";
+            this.gameSubtitle = "Primero a ";
         }
 
         if (map == 1) {
@@ -133,11 +136,13 @@ export class BrickBreaker {
 
         setTimeout(() => {
             if (this.langue == 0) {
-                this.score.drawFlat("Press any key to start.", 30, 'white', 'center', this.ctx.canvas.width / 2, this.ctx.canvas.width / 2)
+                this.score.drawFlat("Press any key to start.", 30, 'white', 'center', this.ctx.canvas.width / 2, this.ctx.canvas.width / 2);
+            } else if (this.langue == 1) {
+                this.score.drawFlat("Appuyez sur n'importe quelle touche.", 30, 'white', 'center', this.ctx.canvas.width / 2, this.ctx.canvas.width / 2);
+            } else if (this.langue == 2) {
+                this.score.drawFlat("Presione cualquier tecla.", 30, 'white', 'center', this.ctx.canvas.width / 2, this.ctx.canvas.width / 2);
             }
-            else if (this.langue == 1) {
-                this.score.drawFlat("Appuyez sur n'importe quelle touche.", 30, 'white', 'center', this.ctx.canvas.width / 2, this.ctx.canvas.width / 2)
-            }
+            
             waitForKeyPress(() => {
                 this.balls.forEach(ball => ball.spawn(this.gameArea, directions));
                 this.balls2.forEach(ball => ball.spawn(this.gameArea2, directions));
